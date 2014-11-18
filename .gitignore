@@ -1,2 +1,5 @@
 *.pyc
 test_*.nc
+build/
+dist/
+*.egg-info
