@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<netcdf xmlns="http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2">
+
+    <attribute name="new_attribute" value="works" />
+    <attribute name="new_history" orgName="history" />
+    <attribute name="new_file_format" orgName="file_format" value="New Format" />
+    <remove name="source" type="attribute" />
+
+    <variable name="time">
+        <attribute name="standard_name" type="string" value="time" />
+    </variable>
+
+    <variable name="u" orgName="u_component_wind_true_direction_all_geometries">
+        <attribute name="standard_name" type="string" value="eastward_wind_velocity" />
+        <attribute name="coordinates" type="string" value="time height y x" />
+        <remove type="attribute" name="units" />
+    </variable>
+
+    <variable name="x">
+        <attribute name="grid_cell_spacing" orgName="grid_spacing" />
+    </variable>
+
+    <dimension name="new_x_dim" orgName="x" />
+</netcdf>
