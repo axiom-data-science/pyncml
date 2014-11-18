@@ -3,3 +3,5 @@ test_*.nc
 build/
 dist/
 *.egg-info
+.*.swp
+*sublime*
