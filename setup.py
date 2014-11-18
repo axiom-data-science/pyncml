@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-from pyncml import __version__
+version = "0.0.2"
 
 
 def readme():
@@ -27,7 +27,7 @@ class PyTest(TestCommand):
 
 setup(
     name                = "pyncml",
-    version             = __version__,
+    version             = version,
     description         = "A simple python library to apply NcML logic to NetCDF files",
     long_description    = readme(),
     license             = 'LGPLv3',
