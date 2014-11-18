@@ -3,8 +3,6 @@ import os
 import unittest
 from datetime import datetime
 
-import pytz
-
 import pyncml
 from pyncml import etree
 
