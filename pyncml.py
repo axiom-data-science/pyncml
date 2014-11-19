@@ -1,9 +1,16 @@
 #!python
 # coding=utf-8
 
+import os
+import glob
 import shutil
 import netCDF4
+import tempfile
+import operator
 import logging
+import pyncml
+import pytz
+import numpy as np
 logger = logging.getLogger("pyncml")
 logger.addHandler(logging.NullHandler())
 
@@ -28,9 +35,19 @@ except ImportError:
                 except ImportError:
                     raise RuntimeError('You need either lxml or ElementTree')
 
+ncml_namespace = 'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
+
+
+class DotDict(object):
+    def __init__(self, *args, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+    def __repr__(self):
+        import pprint
+        return pprint.pformat(vars(self), indent=2)
 
 def apply(input_file, ncml, output_file=None):
-    if isinstance(ncml, (str, unicode,)):
+    if isinstance(ncml, basestring):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
@@ -44,8 +61,6 @@ def apply(input_file, ncml, output_file=None):
         # New file
         shutil.copy(input_file, output_file)
         nc = netCDF4.Dataset(output_file, 'a')
-
-    ncml_namespace = 'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
 
     # Variables
     for v in root.findall('{%s}variable' % ncml_namespace):
@@ -122,3 +137,93 @@ def process_attribute_tag(target, a):
                 value = int(value)
         logger.debug("Setting attribute '{0}' to '{1!s}''".format(attr_name, value))
         target.setncattr(attr_name, value)
+
+
+def scan(ncml):
+    if isinstance(ncml, basestring):
+        root = etree.fromstring(ncml)
+    elif etree.iselement(ncml):
+        root = ncml
+    else:
+        root = etree.parse(ncml).getroot()
+
+    agg = root.find('{%s}aggregation' % ncml_namespace)
+    if agg is None:
+        logger.debug("No <aggregation /> element found")
+        return dict()
+    timevar_name = agg.attrib.get("dimName")
+
+    scan = agg.find('{%s}scan' % ncml_namespace)
+    if scan is None:
+        logger.debug("No <scan /> element found")
+        return dict()
+
+    location = os.path.abspath(scan.attrib.get('location'))
+    if os.path.isfile(location):
+       files = [os.path.abspath(location)]
+    else:
+        suffix   = scan.attrib.get('suffix')
+        subdirs  = scan.attrib.get('subdirs')
+        files = []
+        if subdirs.lower() == "true":
+            files = glob.glob(os.path.join(location, "**", "*{0}".format(suffix)))
+        files += glob.glob(os.path.join(location, "*{0}".format(suffix)))
+    files = [ os.path.abspath(x) for x in files ]
+
+    dataset_name      = None
+    dataset_starting  = None
+    dataset_ending    = None
+    dataset_variables = []
+    dataset_members   = []
+
+    for filepath in files:
+        logger.debug("Processing {}".format(filepath))
+        nc = None
+        try:
+            # Apply NcML
+            tmp_f, tmp_fp = tempfile.mkstemp(prefix="nc")
+            os.close(tmp_f)
+            nc = pyncml.apply(filepath, ncml, output_file=tmp_fp)
+
+            if dataset_name is None:
+                dataset_name = getattr(nc, 'name', getattr(nc, 'title', None))
+
+            timevar = nc.variables.get(timevar_name)
+            if timevar is None:
+                logger.error("Time variable '{0}' was not found in file '{1}'. Skipping.".format(timevar_name, filepath))
+                continue
+
+            # Start/Stop of NetCDF fil
+            starting  = netCDF4.num2date(np.min(timevar[:]), units=timevar.units)
+            ending    = netCDF4.num2date(np.max(timevar[:]), units=timevar.units)
+            variables = filter(None, [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ])
+
+            dataset_variables = list(set(dataset_variables + variables))
+
+            if starting.tzinfo is None:
+                starting = starting.replace(tzinfo=pytz.utc)
+            if ending.tzinfo is None:
+                ending = ending.replace(tzinfo=pytz.utc)
+            if dataset_starting is None or starting < dataset_starting:
+                dataset_starting = starting
+            if dataset_ending is None or ending > dataset_ending:
+                dataset_ending = ending
+
+            member = DotDict(path=filepath, standard_names=variables, starting=starting, ending=ending)
+            dataset_members.append(member)
+        except BaseException:
+            logger.exception("Something went wrong with {0}".format(filepath))
+            continue
+        finally:
+            nc.close()
+            os.remove(tmp_fp)
+
+    dataset_members = sorted(dataset_members, key=operator.attrgetter('starting'))
+    return DotDict(name=dataset_name,
+                   timevar_name=timevar_name,
+                   starting=dataset_starting,
+                   ending=dataset_ending,
+                   standard_names=dataset_variables,
+                   members=dataset_members)
+
+

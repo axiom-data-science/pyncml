@@ -3,19 +3,22 @@ import os
 import unittest
 from datetime import datetime
 
+import pytz
 import pyncml
+import netCDF4
 from pyncml import etree
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
 
 
 class PyncmlFileLoadTests(unittest.TestCase):
 
     def setUp(self):
-        netcdf  = os.path.join(os.path.dirname(__file__), "test.nc")
-        out     = os.path.join(os.path.dirname(__file__), "test_file.nc")
-        ncml    = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), "test.ncml")).getroot()
+        netcdf  = os.path.join(os.path.dirname(__file__), 'resources', "test.nc")
+        out     = os.path.join(os.path.dirname(__file__), 'resources', "test_file.nc")
+        ncml    = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
         self.nc = pyncml.apply(netcdf, ncml, output_file=out)
 
     def tearDown(self):
@@ -61,8 +64,8 @@ class PyncmlFileLoadTests(unittest.TestCase):
 
 class PyncmlStringLoadTests(unittest.TestCase):
     def test_with_string(self):
-        netcdf  = os.path.join(os.path.dirname(__file__), "test.nc")
-        out     = os.path.join(os.path.dirname(__file__), "test_string.nc")
+        netcdf  = os.path.join(os.path.dirname(__file__), 'resources', "test.nc")
+        out     = os.path.join(os.path.dirname(__file__), 'resources', "test_string.nc")
         ncml    = """<?xml version="1.0" encoding="UTF-8"?>
         <netcdf xmlns="http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2">
             <attribute name="new_attribute" value="works" />
@@ -77,8 +80,8 @@ class PyncmlStringLoadTests(unittest.TestCase):
 
 class PyncmlObjectLoadTests(unittest.TestCase):
     def test_with_string(self):
-        netcdf  = os.path.join(os.path.dirname(__file__), "test.nc")
-        out     = os.path.join(os.path.dirname(__file__), "test_object.nc")
+        netcdf  = os.path.join(os.path.dirname(__file__), 'resources', "test.nc")
+        out     = os.path.join(os.path.dirname(__file__), 'resources', "test_object.nc")
         ncml    = etree.fromstring("""<?xml version="1.0" encoding="UTF-8"?>
         <netcdf xmlns="http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2">
             <attribute name="new_attribute" value="works" />
@@ -90,4 +93,13 @@ class PyncmlObjectLoadTests(unittest.TestCase):
         self.nc = pyncml.apply(netcdf, ncml, output_file=out)
         self.assertEquals(self.nc.new_attribute, 'works')
 
+
+class PyncmlScanTests(unittest.TestCase):
+    def test_scan(self):
+        ncml = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
+        aggregation = pyncml.scan(ncml)
+        self.assertEquals(aggregation.name, "U.S. Navy Fleet Numerical Meteorology and Oceanography Center Forecast/Uninitialized Analysis/Image Product")
+        self.assertEquals(len(aggregation.members), 14)
+        self.assertEquals(aggregation.starting, datetime(2014, 6, 20, 0, 0, tzinfo=pytz.utc))
+        self.assertEquals(aggregation.ending, datetime(2014, 7, 19, 23, 0, tzinfo=pytz.utc))
 
