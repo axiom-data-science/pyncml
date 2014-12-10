@@ -42,9 +42,11 @@ class DotDict(object):
     def __init__(self, *args, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
     def __repr__(self):
         import pprint
         return pprint.pformat(vars(self), indent=2)
+
 
 def apply(input_file, ncml, output_file=None):
     if isinstance(ncml, basestring):
@@ -160,7 +162,7 @@ def scan(ncml):
 
     location = os.path.abspath(scan.attrib.get('location'))
     if os.path.isfile(location):
-       files = [os.path.abspath(location)]
+        files = [os.path.abspath(location)]
     else:
         suffix   = scan.attrib.get('suffix')
         subdirs  = scan.attrib.get('subdirs')
@@ -193,7 +195,7 @@ def scan(ncml):
                 logger.error("Time variable '{0}' was not found in file '{1}'. Skipping.".format(timevar_name, filepath))
                 continue
 
-            # Start/Stop of NetCDF fil
+            # Start/Stop of NetCDF file
             starting  = netCDF4.num2date(np.min(timevar[:]), units=timevar.units)
             ending    = netCDF4.num2date(np.max(timevar[:]), units=timevar.units)
             variables = filter(None, [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ])
@@ -225,5 +227,3 @@ def scan(ncml):
                    ending=dataset_ending,
                    standard_names=dataset_variables,
                    members=dataset_members)
-
-
