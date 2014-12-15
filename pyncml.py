@@ -184,6 +184,7 @@ def scan(ncml, apply_to_members=None):
     dataset_variables = []
     dataset_members   = []
 
+    logger.info("Processing aggregation containing {!s} files".format(len(files)))
     for filepath in files:
         logger.debug("Processing {}".format(filepath))
         nc = None
