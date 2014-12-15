@@ -49,12 +49,15 @@ class DotDict(object):
 
 
 def apply(input_file, ncml, output_file=None):
-    if isinstance(ncml, basestring):
+    if isinstance(ncml, basestring) and os.path.isfile(ncml):
+        root = etree.parse(ncml).getroot()
+    elif isinstance(ncml, basestring):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
     else:
-        root = etree.parse(ncml).getroot()
+        raise ValueError("Could not parse ncml. \
+                         Did you pass in a vali file string, xml string, or etree object?")
 
     if output_file is None:
         # In place changes
