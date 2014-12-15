@@ -2,7 +2,7 @@
 <netcdf xmlns="http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2">
 
     <aggregation dimName="time" type="joinExisting" recheckEvery="1 hour">
-        <scan location="resources/coamps/" suffix=".nc" subdirs="false" />
+        <scan location="pyncml/resources/coamps/" suffix=".nc" subdirs="false" />
     </aggregation>
 
     <attribute name="new_attribute" value="works" />

@@ -5,7 +5,6 @@ from datetime import datetime
 
 import pytz
 import pyncml
-import netCDF4
 from pyncml import etree
 
 import logging
