@@ -230,7 +230,7 @@ def scan(ncml, apply_to_members=None):
             nc.close()
             try:
                 os.remove(tmp_fp)
-            except OSError:
+            except (OSError, UnboundLocalError):
                 pass
 
     dataset_members = sorted(dataset_members, key=operator.attrgetter('starting'))
