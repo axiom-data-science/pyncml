@@ -94,6 +94,15 @@ class PyncmlObjectLoadTests(unittest.TestCase):
         self.assertEquals(self.nc.new_attribute, 'works')
 
 
+class PyncmlFilePathLoadTests(unittest.TestCase):
+    def test_with_string(self):
+        netcdf  = os.path.join(os.path.dirname(__file__), 'resources', "test.nc")
+        out     = os.path.join(os.path.dirname(__file__), 'resources', "test_object.nc")
+        ncml    = os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")
+        self.nc = pyncml.apply(netcdf, ncml, output_file=out)
+        self.assertEquals(self.nc.new_attribute, 'works')
+
+
 class PyncmlScanTests(unittest.TestCase):
     def test_scan(self):
         ncml = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
