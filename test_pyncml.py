@@ -9,7 +9,7 @@ import netCDF4
 from pyncml import etree
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 
@@ -111,4 +111,3 @@ class PyncmlScanTests(unittest.TestCase):
         self.assertEquals(len(aggregation.members), 14)
         self.assertEquals(aggregation.starting, datetime(2014, 6, 20, 0, 0, tzinfo=pytz.utc))
         self.assertEquals(aggregation.ending, datetime(2014, 7, 19, 23, 0, tzinfo=pytz.utc))
-

@@ -185,8 +185,8 @@ def scan(ncml, apply_to_members=None):
     dataset_members   = []
 
     logger.info("Processing aggregation containing {!s} files".format(len(files)))
-    for filepath in files:
-        logger.debug("Processing {}".format(filepath))
+    for i, filepath in enumerate(files):
+        logger.info("Processing member ({0}/{1}) - {2} ".format(i+1, len(files), filepath))
         nc = None
         try:
             if apply_to_members is True:
