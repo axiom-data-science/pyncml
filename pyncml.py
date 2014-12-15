@@ -144,13 +144,16 @@ def process_attribute_tag(target, a):
         target.setncattr(attr_name, value)
 
 
-def scan(ncml):
+def scan(ncml, apply_to_members=None):
     if isinstance(ncml, basestring):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
     else:
         root = etree.parse(ncml).getroot()
+
+    if apply_to_members is not False:
+        apply_to_members = True
 
     agg = root.find('{%s}aggregation' % ncml_namespace)
     if agg is None:
@@ -185,10 +188,13 @@ def scan(ncml):
         logger.debug("Processing {}".format(filepath))
         nc = None
         try:
-            # Apply NcML
-            tmp_f, tmp_fp = tempfile.mkstemp(prefix="nc")
-            os.close(tmp_f)
-            nc = pyncml.apply(filepath, ncml, output_file=tmp_fp)
+            if apply_to_members is True:
+                # Apply NcML
+                tmp_f, tmp_fp = tempfile.mkstemp(prefix="nc")
+                os.close(tmp_f)
+                nc = pyncml.apply(filepath, ncml, output_file=tmp_fp)
+            else:
+                nc = netCDF4.Dataset(filepath)
 
             if dataset_name is None:
                 dataset_name = getattr(nc, 'name', getattr(nc, 'title', None))
@@ -221,7 +227,10 @@ def scan(ncml):
             continue
         finally:
             nc.close()
-            os.remove(tmp_fp)
+            try:
+                os.remove(tmp_fp)
+            except OSError:
+                pass
 
     dataset_members = sorted(dataset_members, key=operator.attrgetter('starting'))
     return DotDict(name=dataset_name,
