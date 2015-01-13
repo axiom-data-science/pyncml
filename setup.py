@@ -33,7 +33,7 @@ setup(
     license             = 'LGPLv3',
     author              = "Kyle Wilcox",
     author_email        = "kyle@axiomalaska.com",
-    url                 = "https://github.com/axiomalaska/pyncml",
+    url                 = "https://github.com/axiom-data-science/pyncml",
     packages            = find_packages(),
     install_requires    = reqs,
     tests_require       = ['pytest'],

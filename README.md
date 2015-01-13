@@ -11,7 +11,7 @@
 
 ##### Development
 
-    pip install git+https://github.com/kwilcox/pyncml.git
+    pip install git+https://github.com/axiom-data-science/pyncml.git
 
 ## Supported
 
