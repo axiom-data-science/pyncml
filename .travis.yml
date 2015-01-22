@@ -27,4 +27,4 @@ install:
   # ---------------------------------
   - conda install --channel https://conda.binstar.org/rsignell --file requirements.txt
   - conda install pytest
-script: py.test
+script: py.test -v
