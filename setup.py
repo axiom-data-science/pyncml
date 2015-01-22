@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-version = "0.0.7-dev"
+from pyncml import __version__
 
 
 def readme():
@@ -27,12 +27,12 @@ class PyTest(TestCommand):
 
 setup(
     name                = "pyncml",
-    version             = version,
+    version             = __version__,
     description         = "A simple python library to apply NcML logic to NetCDF files",
     long_description    = readme(),
-    license             = 'LGPLv3',
+    license             = 'MIT',
     author              = "Kyle Wilcox",
-    author_email        = "kyle@axiomalaska.com",
+    author_email        = "kyle@axiomdatascience.com",
     url                 = "https://github.com/axiom-data-science/pyncml",
     packages            = find_packages(),
     install_requires    = reqs,
@@ -42,7 +42,7 @@ setup(
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering',
