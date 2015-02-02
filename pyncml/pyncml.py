@@ -198,7 +198,12 @@ def scan(ncml, apply_to_members=None):
                 nc = netCDF4.Dataset(filepath)
 
             if dataset_name is None:
-                dataset_name = getattr(nc, 'name', getattr(nc, 'title', None))
+                if hasattr(nc, 'name'):
+                    dataset_name = nc.name
+                elif hasattr(nc, 'title'):
+                    dataset_name = nc.title
+                else:
+                    dataset_name = "Pyncml Dataset"
 
             timevar = nc.variables.get(timevar_name)
             if timevar is None:
