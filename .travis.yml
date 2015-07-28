@@ -27,6 +27,6 @@ before_install:
 install:
   # Customise the testing environment
   # ---------------------------------
-  - conda install --channel https://conda.binstar.org/rsignell --file requirements.txt
+  - conda install --channel ioos --file requirements.txt
   - conda install pytest
 script: py.test -v
