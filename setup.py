@@ -13,18 +13,6 @@ def readme():
 
 reqs = [line.strip() for line in open('requirements.txt')]
 
-
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
-
 setup(
     name                = "pyncml",
     version             = __version__,
@@ -36,8 +24,6 @@ setup(
     url                 = "https://github.com/axiom-data-science/pyncml",
     packages            = find_packages(),
     install_requires    = reqs,
-    tests_require       = ['pytest'],
-    cmdclass            = {'test': PyTest},
     classifiers         = [
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
