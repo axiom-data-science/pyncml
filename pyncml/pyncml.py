@@ -49,9 +49,9 @@ class DotDict(object):
 
 
 def apply(input_file, ncml, output_file=None):
-    if isinstance(ncml, basestring) and os.path.isfile(ncml):
+    if isinstance(ncml, str) and os.path.isfile(ncml):
         root = etree.parse(ncml).getroot()
-    elif isinstance(ncml, basestring):
+    elif isinstance(ncml, str):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
@@ -145,7 +145,7 @@ def process_attribute_tag(target, a):
 
 
 def scan(ncml, apply_to_members=None):
-    if isinstance(ncml, basestring):
+    if isinstance(ncml, str):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
@@ -198,9 +198,9 @@ def scan(ncml, apply_to_members=None):
                 nc = netCDF4.Dataset(filepath)
 
             if dataset_name is None:
-                if hasattr(nc, 'name'):
+                if 'name' in nc.ncattrs():
                     dataset_name = nc.name
-                elif hasattr(nc, 'title'):
+                elif 'title' in nc.ncattrs():
                     dataset_name = nc.title
                 else:
                     dataset_name = "Pyncml Dataset"
@@ -213,7 +213,7 @@ def scan(ncml, apply_to_members=None):
             # Start/Stop of NetCDF file
             starting  = netCDF4.num2date(np.min(timevar[:]), units=timevar.units)
             ending    = netCDF4.num2date(np.max(timevar[:]), units=timevar.units)
-            variables = filter(None, [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ])
+            variables = list(filter(None, [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ]))
 
             dataset_variables = list(set(dataset_variables + variables))
 

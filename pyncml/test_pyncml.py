@@ -17,7 +17,7 @@ class PyncmlFileLoadTests(unittest.TestCase):
     def setUp(self):
         netcdf  = os.path.join(os.path.dirname(__file__), 'resources', "test.nc")
         out     = os.path.join(os.path.dirname(__file__), 'resources', "test_file.nc")
-        ncml    = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
+        ncml    = etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
         self.nc = pyncml.apply(netcdf, ncml, output_file=out)
 
     def tearDown(self):
@@ -104,7 +104,7 @@ class PyncmlFilePathLoadTests(unittest.TestCase):
 
 class PyncmlScanTests(unittest.TestCase):
     def test_scan(self):
-        ncml = pyncml.etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
+        ncml = etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
         aggregation = pyncml.scan(ncml)
         self.assertEquals(aggregation.name, "U.S. Navy Fleet Numerical Meteorology and Oceanography Center Forecast/Uninitialized Analysis/Image Product")
         self.assertEquals(len(aggregation.members), 14)
