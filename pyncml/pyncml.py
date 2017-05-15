@@ -5,10 +5,13 @@ import os
 import glob
 import shutil
 import netCDF4
+import logging
 import tempfile
 import operator
-import logging
-import pyncml
+import itertools
+
+import multiprocessing as mp
+
 import pytz
 import numpy as np
 logger = logging.getLogger("pyncml")
@@ -57,7 +60,7 @@ def apply(input_file, ncml, output_file=None):
         root = ncml
     else:
         raise ValueError("Could not parse ncml. \
-                         Did you pass in a vali file string, xml string, or etree object?")
+                         Did you pass in a valid file path, xml string, or etree Element object?")
 
     if output_file is None:
         # In place changes
@@ -144,13 +147,19 @@ def process_attribute_tag(target, a):
         target.setncattr(attr_name, value)
 
 
-def scan(ncml, apply_to_members=None):
-    if isinstance(ncml, str):
+def scan(ncml, apply_to_members=False, cpu_count=None):
+
+    cpu_count = cpu_count or max(mp.cpu_count() - 1, 1)
+
+    if isinstance(ncml, str) and os.path.isfile(ncml):
+        root = etree.parse(ncml).getroot()
+    elif isinstance(ncml, str):
         root = etree.fromstring(ncml)
     elif etree.iselement(ncml):
         root = ncml
     else:
-        root = etree.parse(ncml).getroot()
+        raise ValueError("Could not parse ncml. \
+                         Did you pass in a valid file path, xml string, or etree Element object?")
 
     if apply_to_members is not False:
         apply_to_members = True
@@ -178,70 +187,90 @@ def scan(ncml, apply_to_members=None):
         files += glob.glob(os.path.join(location, "*{0}".format(suffix)))
     files = [ os.path.abspath(x) for x in files ]
 
-    dataset_name      = None
-    dataset_starting  = None
-    dataset_ending    = None
-    dataset_variables = []
-    dataset_members   = []
+    # Start threading
+    num_files = len(files)
+    logger.info("Processing aggregation containing {!s} files".format(num_files))
 
-    logger.info("Processing aggregation containing {!s} files".format(len(files)))
+    manage = mp.Manager()
+    out_data = manage.Queue(num_files)  # Holds individual file parsing results
+    pool = mp.Pool(cpu_count)
     for i, filepath in enumerate(files):
-        logger.info("Processing member ({0}/{1}) - {2} ".format(i+1, len(files), filepath))
-        nc = None
-        try:
-            if apply_to_members is True:
-                # Apply NcML
-                tmp_f, tmp_fp = tempfile.mkstemp(prefix="nc")
-                os.close(tmp_f)
-                nc = pyncml.apply(filepath, ncml, output_file=tmp_fp)
-            else:
-                nc = netCDF4.Dataset(filepath)
+        pool.apply_async(scan_file, (ncml, filepath, apply_to_members, timevar_name, i + 1, num_files, out_data))
+    pool.close()
+    pool.join()
 
-            if dataset_name is None:
-                if 'name' in nc.ncattrs():
-                    dataset_name = nc.name
-                elif 'title' in nc.ncattrs():
-                    dataset_name = nc.title
-                else:
-                    dataset_name = "Pyncml Dataset"
+    # Extract results from Queue
+    dataset_members   = []
+    while True:
+        if out_data.empty() is True:
+            break
+        dataset_members.append(out_data.get_nowait())
 
-            timevar = nc.variables.get(timevar_name)
-            if timevar is None:
-                logger.error("Time variable '{0}' was not found in file '{1}'. Skipping.".format(timevar_name, filepath))
-                continue
-
-            # Start/Stop of NetCDF file
-            starting  = netCDF4.num2date(np.min(timevar[:]), units=timevar.units)
-            ending    = netCDF4.num2date(np.max(timevar[:]), units=timevar.units)
-            variables = list(filter(None, [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ]))
-
-            dataset_variables = list(set(dataset_variables + variables))
-
-            if starting.tzinfo is None:
-                starting = starting.replace(tzinfo=pytz.utc)
-            if ending.tzinfo is None:
-                ending = ending.replace(tzinfo=pytz.utc)
-            if dataset_starting is None or starting < dataset_starting:
-                dataset_starting = starting
-            if dataset_ending is None or ending > dataset_ending:
-                dataset_ending = ending
-
-            member = DotDict(path=filepath, standard_names=variables, starting=starting, ending=ending)
-            dataset_members.append(member)
-        except BaseException:
-            logger.exception("Something went wrong with {0}".format(filepath))
-            continue
-        finally:
-            nc.close()
-            try:
-                os.remove(tmp_fp)
-            except (OSError, UnboundLocalError):
-                pass
-
+    # Generate collection stats
+    logger.info("Generating collection stats...")
     dataset_members = sorted(dataset_members, key=operator.attrgetter('starting'))
-    return DotDict(name=dataset_name,
-                   timevar_name=timevar_name,
+    dataset_starting = min([ x.starting for x in dataset_members ])
+    dataset_ending = max([ x.ending for x in dataset_members ])
+    dataset_variables = itertools.chain.from_iterable([ m.standard_names for m in dataset_members ])
+    dataset_variables = list(set(dataset_variables))
+
+    return DotDict(timevar_name=timevar_name,
                    starting=dataset_starting,
                    ending=dataset_ending,
                    standard_names=dataset_variables,
                    members=dataset_members)
+
+
+def scan_file(ncml, filepath, apply_to_members, timevar_name, num, total_num, results):
+    logger.info("Processing member ({0}/{1}) - {2} ".format(num, total_num, filepath))
+
+    nc = None
+    try:
+        if apply_to_members is True:
+            # Apply NcML
+            tmp_f, tmp_fp = tempfile.mkstemp(prefix="nc")
+            os.close(tmp_f)
+            nc = apply(filepath, ncml, output_file=tmp_fp)
+        else:
+            nc = netCDF4.Dataset(filepath)
+
+        title = "Pyncml Dataset"
+        if 'name' in nc.ncattrs():
+            title = nc.name
+        elif 'title' in nc.ncattrs():
+            title = nc.title
+
+        timevar = nc.variables.get(timevar_name)
+        if timevar is None:
+            logger.error("Time variable '{0}' was not found in file '{1}'. Skipping.".format(timevar_name, filepath))
+            return
+
+        # Start/Stop of NetCDF file
+        starting  = netCDF4.num2date(np.min(timevar[:]),
+                                     units=timevar.units,
+                                     calendar=getattr(timevar, 'calendar', 'standard'))
+        ending    = netCDF4.num2date(np.max(timevar[:]),
+                                     units=timevar.units,
+                                     calendar=getattr(timevar, 'calendar', 'standard'))
+        variables = list(
+            filter(
+                None,
+                [ nc.variables[v].standard_name if hasattr(nc.variables[v], 'standard_name') else None for v in nc.variables.keys() ]
+            )
+        )
+
+        if starting.tzinfo is None:
+            starting = starting.replace(tzinfo=pytz.utc)
+        if ending.tzinfo is None:
+            ending = ending.replace(tzinfo=pytz.utc)
+
+        results.put(DotDict(path=filepath, standard_names=variables, title=title, starting=starting, ending=ending))
+    except BaseException:
+        logger.exception("Something went wrong with {0}".format(filepath))
+        return
+    finally:
+        nc.close()
+        try:
+            os.remove(tmp_fp)
+        except (OSError, UnboundLocalError):
+            pass

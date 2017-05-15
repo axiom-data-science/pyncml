@@ -95,7 +95,9 @@ nc = pyncml.apply(input_file=netcdf, ncml=ncml, output_file=out)
 
 ### Scan
 
-The `scan` function takes in a path to an `ncml` object (string, file path, or python etree object).  The object returned from the `scan` function is a metadata object describing the scan aggregation **it is not a netcdf4-python object of the aggregation**.  You can create a `netcdf4-python` object from the scan aggregation (example below).
+The `scan` function takes in a path to an `ncml` object (string, file path, or python etree `Element` object).  The object returned from the `scan` function is a metadata object describing the scan aggregation **it is not a netcdf4-python object of the aggregation**.  You can create a `netcdf4-python` object from the scan aggregation (example below).
+
+By default only the `scan` object in the `ncml` is used for this function... meaning any attribute changes specified in the `ncml` **will not** be applied to individual members of the aggregation before computing the scan aggregation. If you would like each individual file to have the `ncml` applied to it (using the `apply` method documented above), use the `apply_to_members=True` attribute to `scan`. This will take longer because it is actually saving a new file with the attributes applyed and them computing the metadata.
 
 
 ##### Obtaining aggregation metadata
@@ -124,6 +126,7 @@ print agg.standard_names
 print agg.members  # These are already sorted by the 'starting' date
 [
   {
+    'title':          'hello'  # Pulled from the global attraibutes 'name' or 'title'
     'starting':       datetime.datetime(2014, 6, 20, 0, 0, tzinfo=<UTC>),
     'ending':         datetime.datetime(2014, 6, 20, 0, 0, tzinfo=<UTC>),
     'path':           '/path/to/aggregation/defined/in/ncml/first_member.nc'
@@ -133,6 +136,7 @@ print agg.members  # These are already sorted by the 'starting' date
                        u'eastward_wind_velocity'],
   },
   {
+    'title':          'hello'  # Pulled from the global attraibutes 'name' or 'title'
     'starting':       datetime.datetime(2014, 6, 20, 1, 0, tzinfo=<UTC>),
     'ending':         datetime.datetime(2014, 6, 20, 1, 0, tzinfo=<UTC>),
     'path':           '/path/to/aggregation/defined/in/ncml/second_member.nc'
