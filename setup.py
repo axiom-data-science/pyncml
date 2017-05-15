@@ -4,18 +4,23 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-from pyncml import __version__
+
+def version():
+    with open('VERSION') as f:
+        return f.read().strip()
 
 
 def readme():
     with open('README.md') as f:
         return f.read()
 
+
 reqs = [line.strip() for line in open('requirements.txt')]
+
 
 setup(
     name                = "pyncml",
-    version             = __version__,
+    version             = version(),
     description         = "A simple python library to apply NcML logic to NetCDF files",
     long_description    = readme(),
     license             = 'MIT',
