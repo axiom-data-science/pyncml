@@ -161,9 +161,6 @@ def scan(ncml, apply_to_members=False, cpu_count=None):
         raise ValueError("Could not parse ncml. \
                          Did you pass in a valid file path, xml string, or etree Element object?")
 
-    if apply_to_members is not False:
-        apply_to_members = True
-
     agg = root.find('{%s}aggregation' % ncml_namespace)
     if agg is None:
         logger.debug("No <aggregation /> element found")
@@ -191,24 +188,29 @@ def scan(ncml, apply_to_members=False, cpu_count=None):
     num_files = len(files)
     logger.info("Processing aggregation containing {!s} files".format(num_files))
 
-    manage = mp.Manager()
-    out_data = manage.Queue(num_files)  # Holds individual file parsing results
     pool = mp.Pool(cpu_count)
+    results = []
     for i, filepath in enumerate(files):
-        pool.apply_async(scan_file, (ncml, filepath, apply_to_members, timevar_name, i + 1, num_files, out_data))
+        r = pool.apply_async(scan_file, (etree.tostring(ncml), filepath, apply_to_members, timevar_name, i + 1, num_files))
+        results.append(r)
+
+    dataset_members = []
+    for r in results:
+        dataset_members.append(r.get())
+
     pool.close()
     pool.join()
 
-    # Extract results from Queue
-    dataset_members   = []
-    while True:
-        if out_data.empty() is True:
-            break
-        dataset_members.append(out_data.get_nowait())
-
     # Generate collection stats
+    dataset_members = filter(None, dataset_members)  # Remove None responses
     logger.info("Generating collection stats...")
     dataset_members = sorted(dataset_members, key=operator.attrgetter('starting'))
+    if not dataset_members:
+        return DotDict(timevar_name=timevar_name,
+                       starting=None,
+                       ending=None,
+                       standard_names=None,
+                       members=[])
     dataset_starting = min([ x.starting for x in dataset_members ])
     dataset_ending = max([ x.ending for x in dataset_members ])
     dataset_variables = itertools.chain.from_iterable([ m.standard_names for m in dataset_members ])
@@ -221,9 +223,10 @@ def scan(ncml, apply_to_members=False, cpu_count=None):
                    members=dataset_members)
 
 
-def scan_file(ncml, filepath, apply_to_members, timevar_name, num, total_num, results):
+def scan_file(ncml, filepath, apply_to_members, timevar_name, num, total_num):
     logger.info("Processing member ({0}/{1}) - {2} ".format(num, total_num, filepath))
 
+    ncml = etree.fromstring(ncml)
     nc = None
     try:
         if apply_to_members is True:
@@ -243,7 +246,7 @@ def scan_file(ncml, filepath, apply_to_members, timevar_name, num, total_num, re
         timevar = nc.variables.get(timevar_name)
         if timevar is None:
             logger.error("Time variable '{0}' was not found in file '{1}'. Skipping.".format(timevar_name, filepath))
-            return
+            return None
 
         # Start/Stop of NetCDF file
         starting  = netCDF4.num2date(np.min(timevar[:]),
@@ -264,10 +267,10 @@ def scan_file(ncml, filepath, apply_to_members, timevar_name, num, total_num, re
         if ending.tzinfo is None:
             ending = ending.replace(tzinfo=pytz.utc)
 
-        results.put(DotDict(path=filepath, standard_names=variables, title=title, starting=starting, ending=ending))
+        return DotDict(path=filepath, standard_names=variables, title=title, starting=starting, ending=ending)
     except BaseException:
         logger.exception("Something went wrong with {0}".format(filepath))
-        return
+        return None
     finally:
         nc.close()
         try:

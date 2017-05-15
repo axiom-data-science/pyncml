@@ -21,3 +21,5 @@ git tag $1
 
 # Push to Git
 git push --tags origin master
+
+echo "Please run \"python setup.py sdist upload\" if this is an actual release!"
