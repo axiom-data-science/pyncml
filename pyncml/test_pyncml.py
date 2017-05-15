@@ -106,7 +106,6 @@ class PyncmlScanTests(unittest.TestCase):
     def test_scan(self):
         ncml = etree.parse(os.path.join(os.path.dirname(__file__), 'resources', "test.ncml")).getroot()
         aggregation = pyncml.scan(ncml)
-        self.assertEquals(aggregation.name, "U.S. Navy Fleet Numerical Meteorology and Oceanography Center Forecast/Uninitialized Analysis/Image Product")
         self.assertEquals(len(aggregation.members), 14)
         self.assertEquals(aggregation.starting, datetime(2014, 6, 20, 0, 0, tzinfo=pytz.utc))
         self.assertEquals(aggregation.ending, datetime(2014, 7, 19, 23, 0, tzinfo=pytz.utc))
