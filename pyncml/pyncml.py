@@ -191,7 +191,7 @@ def scan(ncml, apply_to_members=False, cpu_count=None):
     pool = mp.Pool(cpu_count)
     results = []
     for i, filepath in enumerate(files):
-        r = pool.apply_async(scan_file, (etree.tostring(ncml), filepath, apply_to_members, timevar_name, i + 1, num_files))
+        r = pool.apply_async(scan_file, (etree.tostring(root), filepath, apply_to_members, timevar_name, i + 1, num_files))
         results.append(r)
 
     dataset_members = []
